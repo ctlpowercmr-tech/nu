@@ -1,187 +1,359 @@
-class ApplicationUtilisateur {
+class UtilisateurApp {
     constructor() {
         this.API_URL = CONFIG.API_URL;
-        this.token = localStorage.getItem(CONFIG.JWT_KEY);
-        this.userData = JSON.parse(localStorage.getItem(CONFIG.USER_DATA_KEY) || '{}');
-        this.cameraActive = false;
-        this.currentStream = null;
-        this.operateurSelectionne = null;
-        this.montantSelectionne = null;
+        this.utilisateur = null;
+        this.token = null;
         this.transactionActuelle = null;
-        this.soldeVisible = true;
+        this.cameraActive = false;
         
         this.init();
     }
     
-    async init() {
-        this.setupEventListeners();
+    init() {
         this.verifierAuthentification();
-        this.initialiserDateTime();
-        this.chargerDonneesInitiales();
+        this.setupEventListeners();
+    }
+    
+    verifierAuthentification() {
+        const token = localStorage.getItem('token');
+        const utilisateur = localStorage.getItem('utilisateur');
+        
+        if (token && utilisateur) {
+            this.token = token;
+            this.utilisateur = JSON.parse(utilisateur);
+            this.afficherDashboard();
+        } else {
+            this.afficherAuth();
+        }
     }
     
     setupEventListeners() {
-        // Navigation entre écrans
-        document.getElementById('btn-show-inscription').addEventListener('click', () => this.afficherEcran('inscription'));
-        document.getElementById('btn-show-connexion').addEventListener('click', () => this.afficherEcran('connexion'));
-        
-        // Formulaires d'authentification
-        document.getElementById('form-connexion').addEventListener('submit', (e) => this.connexion(e));
-        document.getElementById('form-inscription').addEventListener('submit', (e) => this.inscription(e));
-        
-        // Navigation principale
-        document.querySelectorAll('.nav-item').forEach(item => {
-            item.addEventListener('click', (e) => this.changerOnglet(e.currentTarget.getAttribute('data-tab')));
+        // Navigation par onglets
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const section = e.target.closest('.nav-btn').dataset.section;
+                this.changerSection(section);
+            });
         });
         
-        // Actions rapides
-        document.getElementById('btn-recharger-rapide').addEventListener('click', () => this.changerOnglet('recharger'));
-        document.getElementById('btn-scanner-rapide').addEventListener('click', () => this.changerOnglet('scanner'));
-        document.getElementById('btn-historique-rapide').addEventListener('click', () => this.changerOnglet('historique'));
-        
-        // Scanner
-        document.getElementById('btn-switch-camera').addEventListener('click', () => this.switchCamera());
-        document.getElementById('btn-toggle-flash').addEventListener('click', () => this.toggleFlash());
-        document.getElementById('btn-charger-manuel').addEventListener('click', () => this.chargerTransactionManuelle());
-        
-        // Recharger
-        document.querySelectorAll('.operateur-card').forEach(card => {
-            card.addEventListener('click', (e) => this.selectionnerOperateur(e.currentTarget.getAttribute('data-operateur')));
+        // Formulaire de connexion
+        document.getElementById('form-connexion').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.connexion();
         });
         
-        document.querySelectorAll('.montant-rapide').forEach(montant => {
-            montant.addEventListener('click', (e) => this.selectionnerMontant(parseInt(e.currentTarget.getAttribute('data-montant'))));
+        // Formulaire d'inscription
+        document.getElementById('form-inscription').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.inscription();
         });
         
-        document.getElementById('montant-personnalise').addEventListener('input', (e) => this.selectionnerMontantPersonnalise(e.target.value));
-        document.getElementById('btn-confirmer-recharge').addEventListener('click', () => this.confirmerRecharge());
+        // Tabs d'authentification
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const tab = e.target.dataset.tab;
+                this.changerTabAuth(tab);
+            });
+        });
+        
+        // Rechargement
+        document.getElementById('btn-recharger').addEventListener('click', () => {
+            this.afficherModalRechargement();
+        });
+        
+        document.getElementById('close-recharge').addEventListener('click', () => {
+            this.cacherModalRechargement();
+        });
+        
+        document.getElementById('form-recharge').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.rechargerCompte();
+        });
+        
+        // Vider le compte
+        document.getElementById('btn-vider').addEventListener('click', () => {
+            this.viderCompte();
+        });
+        
+        // Déconnexion
+        document.getElementById('btn-deconnexion').addEventListener('click', () => {
+            this.deconnexion();
+        });
         
         // Transaction
-        document.getElementById('btn-payer-transaction').addEventListener('click', () => this.effectuerPaiement());
-        document.getElementById('btn-annuler-transaction').addEventListener('click', () => this.annulerTransaction());
-        document.getElementById('btn-retour-transaction').addEventListener('click', () => this.changerOnglet('accueil'));
-        
-        // Profil
-        document.getElementById('btn-deconnexion').addEventListener('click', () => this.deconnexion());
-        document.getElementById('btn-deconnexion-profil').addEventListener('click', () => this.deconnexion());
-        
-        // Solde
-        document.getElementById('toggle-solde').addEventListener('click', () => this.toggleSolde());
-        
-        // Modal
-        document.getElementById('btn-modal-ok').addEventListener('click', () => this.fermerModal());
-        document.querySelector('.btn-close-modal').addEventListener('click', () => this.fermerModal());
-        
-        // Voir tout
-        document.querySelectorAll('.btn-voir-tout').forEach(btn => {
-            btn.addEventListener('click', (e) => this.changerOnglet(e.currentTarget.getAttribute('data-tab')));
+        document.getElementById('btn-charger-transaction').addEventListener('click', () => {
+            this.chargerTransaction();
         });
         
-        // Filtres historique
-        document.getElementById('filtre-statut').addEventListener('change', () => this.filtrerHistorique());
-        document.getElementById('filtre-periode').addEventListener('change', () => this.filtrerHistorique());
+        document.getElementById('btn-payer').addEventListener('click', () => {
+            this.effectuerPaiement();
+        });
         
-        // Toggle password
-        document.querySelectorAll('.btn-toggle-password').forEach(btn => {
-            btn.addEventListener('click', (e) => this.togglePassword(e.currentTarget));
+        document.getElementById('btn-annuler-transaction').addEventListener('click', () => {
+            this.annulerTransaction();
         });
     }
     
-    async verifierAuthentification() {
-        if (this.token && this.userData.id) {
-            try {
-                const response = await fetch(`${this.API_URL}/api/solde`, {
-                    headers: {
-                        'Authorization': `Bearer ${this.token}`
-                    }
-                });
+    changerTabAuth(tab) {
+        // Désactiver tous les tabs
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+        
+        // Activer le tab sélectionné
+        document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+        document.getElementById(`${tab}-tab`).classList.add('active');
+    }
+    
+    async connexion() {
+        const email = document.getElementById('email-connexion').value;
+        const password = document.getElementById('password-connexion').value;
+        
+        try {
+            const response = await fetch(`${this.API_URL}/api/connexion`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ email, password })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                this.token = result.token;
+                this.utilisateur = result.user;
                 
-                if (response.ok) {
-                    this.afficherEcran('principal');
-                    this.mettreAJourHeader();
-                    this.chargerSolde();
-                    this.chargerHistorique();
-                } else {
-                    this.deconnexion();
+                // Sauvegarder dans le localStorage
+                localStorage.setItem('token', this.token);
+                localStorage.setItem('utilisateur', JSON.stringify(this.utilisateur));
+                
+                this.afficherDashboard();
+                this.parler('Connexion réussie');
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error) {
+            console.error('Erreur connexion:', error);
+            alert('Erreur: ' + error.message);
+        }
+    }
+    
+    async inscription() {
+        const nom = document.getElementById('nom-inscription').value;
+        const email = document.getElementById('email-inscription').value;
+        const telephone = document.getElementById('telephone-inscription').value;
+        const password = document.getElementById('password-inscription').value;
+        const confirmPassword = document.getElementById('confirm-password').value;
+        
+        if (password !== confirmPassword) {
+            alert('Les mots de passe ne correspondent pas');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`${this.API_URL}/api/inscription`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ nom, email, telephone, password })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                this.token = result.token;
+                this.utilisateur = result.user;
+                
+                localStorage.setItem('token', this.token);
+                localStorage.setItem('utilisateur', JSON.stringify(this.utilisateur));
+                
+                this.afficherDashboard();
+                this.parler('Inscription réussie');
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error) {
+            console.error('Erreur inscription:', error);
+            alert('Erreur: ' + error.message);
+        }
+    }
+    
+    deconnexion() {
+        localStorage.removeItem('token');
+        localStorage.removeItem('utilisateur');
+        this.token = null;
+        this.utilisateur = null;
+        this.afficherAuth();
+        this.parler('Déconnexion réussie');
+    }
+    
+    afficherAuth() {
+        document.getElementById('auth-section').style.display = 'block';
+        document.getElementById('dashboard-section').style.display = 'none';
+        document.getElementById('header-actions').innerHTML = `
+            <button id="btn-connexion" class="btn-connexion">
+                <i class="fas fa-sign-in-alt"></i> Connexion
+            </button>
+        `;
+    }
+    
+    afficherDashboard() {
+        document.getElementById('auth-section').style.display = 'none';
+        document.getElementById('dashboard-section').style.display = 'block';
+        document.getElementById('header-actions').innerHTML = `
+            <span>Bonjour, ${this.utilisateur.nom}</span>
+        `;
+        
+        this.mettreAJourProfil();
+        this.chargerSolde();
+        this.chargerHistorique();
+        this.demarrerScanner();
+    }
+    
+    mettreAJourProfil() {
+        document.getElementById('profil-nom').textContent = this.utilisateur.nom;
+        document.getElementById('profil-email').textContent = this.utilisateur.email;
+        document.getElementById('profil-telephone').textContent = this.utilisateur.telephone || 'Non renseigné';
+        document.getElementById('profil-date').textContent = new Date(this.utilisateur.created_at).toLocaleDateString('fr-FR');
+    }
+    
+    async chargerSolde() {
+        if (!this.token) return;
+        
+        try {
+            const response = await fetch(`${this.API_URL}/api/profil`, {
+                headers: {
+                    'Authorization': `Bearer ${this.token}`
                 }
-            } catch (error) {
-                console.error('Erreur vérification auth:', error);
-                this.deconnexion();
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                document.getElementById('solde-utilisateur').textContent = `${result.user.solde} FCFA`;
             }
-        } else {
-            this.afficherEcran('connexion');
+        } catch (error) {
+            console.error('Erreur chargement solde:', error);
         }
     }
     
-    afficherEcran(ecran) {
-        document.querySelectorAll('.ecran').forEach(e => e.classList.remove('active'));
-        document.getElementById(`ecran-${ecran}`).classList.add('active');
+    afficherModalRechargement() {
+        document.getElementById('recharge-modal').classList.add('active');
+    }
+    
+    cacherModalRechargement() {
+        document.getElementById('recharge-modal').classList.remove('active');
+    }
+    
+    async rechargerCompte() {
+        const montant = document.getElementById('montant-recharge').value;
+        const operateur = document.getElementById('operateur').value;
+        const numeroTelephone = document.getElementById('numero-telephone').value;
         
-        if (ecran === 'scanner') {
-            this.demarrerScanner();
-        } else if (ecran === 'principal') {
-            this.changerOnglet('accueil');
-        } else {
-            this.arreterCamera();
+        if (!montant || !operateur || !numeroTelephone) {
+            alert('Veuillez remplir tous les champs');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`${this.API_URL}/api/recharger`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.token}`
+                },
+                body: JSON.stringify({
+                    montant: parseFloat(montant),
+                    operateur,
+                    numero_telephone: numeroTelephone
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                this.cacherModalRechargement();
+                this.chargerSolde();
+                this.parler(`Rechargement de ${montant} FCFA effectué avec succès`);
+                alert(result.message);
+                
+                // Réinitialiser le formulaire
+                document.getElementById('form-recharge').reset();
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error) {
+            console.error('Erreur rechargement:', error);
+            alert('Erreur: ' + error.message);
         }
     }
     
-    changerOnglet(onglet) {
-        // Mettre à jour la navigation
-        document.querySelectorAll('.nav-item').forEach(item => {
-            item.classList.remove('active');
-            if (item.getAttribute('data-tab') === onglet) {
-                item.classList.add('active');
+    async viderCompte() {
+        if (!confirm('Êtes-vous sûr de vouloir vider votre compte ?')) {
+            return;
+        }
+        
+        try {
+            const response = await fetch(`${this.API_URL}/api/vider-compte`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.token}`
+                }
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                this.chargerSolde();
+                this.parler('Compte vidé avec succès');
+                alert(result.message);
+            } else {
+                throw new Error(result.error);
             }
-        });
+        } catch (error) {
+            console.error('Erreur vider compte:', error);
+            alert('Erreur: ' + error.message);
+        }
+    }
+    
+    changerSection(section) {
+        // Désactiver toutes les sections
+        document.querySelectorAll('.content-section').forEach(sec => sec.classList.remove('active'));
+        document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
         
-        // Afficher le contenu
-        document.querySelectorAll('.tab-content').forEach(content => {
-            content.classList.remove('active');
-        });
-        document.getElementById(onglet).classList.add('active');
+        // Activer la section sélectionnée
+        document.getElementById(`${section}-section`).classList.add('active');
+        document.querySelector(`[data-section="${section}"]`).classList.add('active');
         
-        // Actions spécifiques à l'onglet
-        if (onglet === 'scanner') {
+        // Si on revient au scanner, redémarrer la caméra
+        if (section === 'scanner') {
             this.demarrerScanner();
-        } else if (onglet === 'historique') {
-            this.chargerHistorique();
-        } else if (onglet === 'profil') {
-            this.mettreAJourProfil();
-        } else {
-            this.arreterCamera();
         }
     }
     
     async demarrerScanner() {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { 
-                    facingMode: "environment",
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
-                } 
+                video: { facingMode: "environment" } 
             });
-            
             const video = document.getElementById('camera-feed');
             video.srcObject = stream;
-            this.currentStream = stream;
             this.cameraActive = true;
             
-            this.scannerQRCode();
+            this.scannerQRCode(stream);
         } catch (error) {
             console.error('Erreur accès caméra:', error);
-            this.afficherMessage('Impossible d\'accéder à la caméra. Veuillez vérifier les permissions.', 'error');
         }
     }
     
-    scannerQRCode() {
+    scannerQRCode(stream) {
         const video = document.getElementById('camera-feed');
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
         
         const scanFrame = () => {
-            if (video.readyState === video.HAVE_ENOUGH_DATA && this.cameraActive) {
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
                 canvas.width = video.videoWidth;
                 canvas.height = video.videoHeight;
                 context.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -194,214 +366,39 @@ class ApplicationUtilisateur {
                         const data = JSON.parse(code.data);
                         if (data.transactionId) {
                             this.arreterCamera();
-                            this.jouerSon('scan');
                             this.chargerTransaction(data.transactionId);
                         }
                     } catch (e) {
-                        console.log('QR code non reconnu:', e);
+                        console.log('QR code non reconnu');
                     }
                 }
             }
-            
-            if (this.cameraActive) {
-                requestAnimationFrame(scanFrame);
-            }
+            requestAnimationFrame(scanFrame);
         };
-        
         scanFrame();
     }
     
     arreterCamera() {
-        if (this.currentStream) {
-            this.currentStream.getTracks().forEach(track => track.stop());
-            this.currentStream = null;
-        }
-        this.cameraActive = false;
-    }
-    
-    async switchCamera() {
-        this.arreterCamera();
-        
-        try {
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            const videoDevices = devices.filter(device => device.kind === 'videoinput');
-            
-            if (videoDevices.length > 1) {
-                // Implémentation basique du switch de caméra
-                const constraints = { 
-                    video: { 
-                        facingMode: this.currentFacingMode === 'user' ? 'environment' : 'user'
-                    } 
-                };
-                
-                this.currentFacingMode = constraints.video.facingMode;
-                const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                const video = document.getElementById('camera-feed');
-                video.srcObject = stream;
-                this.currentStream = stream;
+        if (this.cameraActive) {
+            const video = document.getElementById('camera-feed');
+            const stream = video.srcObject;
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
             }
-        } catch (error) {
-            console.error('Erreur switch caméra:', error);
+            this.cameraActive = false;
         }
     }
     
-    toggleFlash() {
-        // Implémentation basique du flash (nécessite une vraie implémentation pour mobile)
-        this.afficherMessage('Fonction flash non disponible sur ce navigateur', 'info');
-    }
-    
-    async connexion(e) {
-        e.preventDefault();
+    async chargerTransaction(transactionId = null) {
+        const id = transactionId || document.getElementById('transaction-id').value.trim();
         
-        const email = document.getElementById('login-email').value;
-        const password = document.getElementById('login-password').value;
-        
-        try {
-            const response = await fetch(`${this.API_URL}/api/auth/connexion`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ email, password })
-            });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                this.token = result.token;
-                this.userData = result.user;
-                
-                localStorage.setItem(CONFIG.JWT_KEY, this.token);
-                localStorage.setItem(CONFIG.USER_DATA_KEY, JSON.stringify(this.userData));
-                
-                this.afficherEcran('principal');
-                this.mettreAJourHeader();
-                this.chargerSolde();
-                this.chargerHistorique();
-                
-                this.afficherMessage('Connexion réussie!', 'success');
-            } else {
-                this.afficherMessage(result.error, 'error');
-            }
-        } catch (error) {
-            console.error('Erreur connexion:', error);
-            this.afficherMessage('Erreur de connexion au serveur', 'error');
-        }
-    }
-    
-    async inscription(e) {
-        e.preventDefault();
-        
-        const nom = document.getElementById('inscription-nom').value;
-        const email = document.getElementById('inscription-email').value;
-        const telephone = document.getElementById('inscription-telephone').value;
-        const password = document.getElementById('inscription-password').value;
-        const confirmPassword = document.getElementById('inscription-confirm').value;
-        
-        if (password !== confirmPassword) {
-            this.afficherMessage('Les mots de passe ne correspondent pas', 'error');
-            return;
-        }
-        
-        if (password.length < 6) {
-            this.afficherMessage('Le mot de passe doit contenir au moins 6 caractères', 'error');
+        if (!id) {
+            alert('Veuillez saisir un ID de transaction');
             return;
         }
         
         try {
-            const response = await fetch(`${this.API_URL}/api/auth/inscription`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ nom, email, telephone, password })
-            });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                this.afficherMessage('Compte créé avec succès! Veuillez vous connecter.', 'success');
-                this.afficherEcran('connexion');
-                
-                // Réinitialiser le formulaire
-                document.getElementById('form-inscription').reset();
-            } else {
-                this.afficherMessage(result.error, 'error');
-            }
-        } catch (error) {
-            console.error('Erreur inscription:', error);
-            this.afficherMessage('Erreur de connexion au serveur', 'error');
-        }
-    }
-    
-    deconnexion() {
-        this.token = null;
-        this.userData = {};
-        localStorage.removeItem(CONFIG.JWT_KEY);
-        localStorage.removeItem(CONFIG.USER_DATA_KEY);
-        this.arreterCamera();
-        this.afficherEcran('connexion');
-    }
-    
-    mettreAJourHeader() {
-        document.getElementById('header-user-name').textContent = this.userData.nom || 'Utilisateur';
-    }
-    
-    mettreAJourProfil() {
-        document.getElementById('profil-nom').textContent = this.userData.nom || 'Utilisateur';
-        document.getElementById('profil-email').textContent = this.userData.email || 'Non renseigné';
-        document.getElementById('profil-telephone').textContent = this.userData.telephone || 'Non renseigné';
-    }
-    
-    async chargerSolde() {
-        try {
-            const response = await fetch(`${this.API_URL}/api/solde`, {
-                headers: {
-                    'Authorization': `Bearer ${this.token}`
-                }
-            });
-            
-            if (response.ok) {
-                const result = await response.json();
-                if (result.success) {
-                    this.userData.solde = result.solde;
-                    this.mettreAJourSolde();
-                }
-            }
-        } catch (error) {
-            console.error('Erreur chargement solde:', error);
-        }
-    }
-    
-    mettreAJourSolde() {
-        const soldeElement = document.getElementById('solde-montant');
-        if (this.soldeVisible) {
-            soldeElement.textContent = this.formatMontant(this.userData.solde || 0);
-        } else {
-            soldeElement.textContent = '•••••';
-        }
-    }
-    
-    toggleSolde() {
-        this.soldeVisible = !this.soldeVisible;
-        const btnEye = document.getElementById('toggle-solde');
-        btnEye.innerHTML = this.soldeVisible ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
-        this.mettreAJourSolde();
-    }
-    
-    async chargerTransactionManuelle() {
-        const transactionId = document.getElementById('transaction-id-manuel').value.trim();
-        if (!transactionId) {
-            this.afficherMessage('Veuillez entrer un ID de transaction', 'error');
-            return;
-        }
-        
-        this.chargerTransaction(transactionId);
-    }
-    
-    async chargerTransaction(transactionId) {
-        try {
-            const response = await fetch(`${this.API_URL}/api/transaction/${transactionId}`, {
+            const response = await fetch(`${this.API_URL}/api/transaction/${id}`, {
                 headers: {
                     'Authorization': `Bearer ${this.token}`
                 }
@@ -412,50 +409,57 @@ class ApplicationUtilisateur {
             if (result.success) {
                 this.transactionActuelle = result.data;
                 this.afficherDetailsTransaction();
-                this.changerOnglet('transaction');
             } else {
-                this.afficherMessage(result.error, 'error');
+                throw new Error(result.error);
             }
         } catch (error) {
             console.error('Erreur chargement transaction:', error);
-            this.afficherMessage('Erreur de connexion au serveur', 'error');
+            alert('Erreur: ' + error.message);
         }
     }
     
     afficherDetailsTransaction() {
-        if (!this.transactionActuelle) return;
+        this.changerSection('transaction');
         
         document.getElementById('detail-transaction-id').textContent = this.transactionActuelle.id;
-        document.getElementById('detail-montant').textContent = this.formatMontant(this.transactionActuelle.montant) + ' FCFA';
+        document.getElementById('detail-montant').textContent = `${this.transactionActuelle.montant} FCFA`;
         document.getElementById('detail-statut').textContent = this.getStatutText(this.transactionActuelle.statut);
-        document.getElementById('detail-statut').className = `value statut statut-${this.transactionActuelle.statut}`;
-        document.getElementById('detail-date').textContent = new Date(this.transactionActuelle.date).toLocaleString();
         
-        // Afficher les boissons
-        const listeBoissons = document.getElementById('liste-boissons');
-        listeBoissons.innerHTML = '';
+        this.afficherBoissonsTransaction();
         
-        if (this.transactionActuelle.boissons && Array.isArray(this.transactionActuelle.boissons)) {
-            this.transactionActuelle.boissons.forEach(boisson => {
-                const item = document.createElement('div');
-                item.className = 'boisson-item';
-                item.innerHTML = `
-                    <span class="boisson-nom">${boisson.nom}</span>
-                    <span class="boisson-prix">${this.formatMontant(boisson.prix)} FCFA</span>
-                `;
-                listeBoissons.appendChild(item);
-            });
-        }
-        
-        // Activer/désactiver le bouton de paiement
-        const btnPayer = document.getElementById('btn-payer-transaction');
+        const btnPayer = document.getElementById('btn-payer');
         btnPayer.disabled = this.transactionActuelle.statut !== 'en_attente';
         
         if (this.transactionActuelle.statut !== 'en_attente') {
             btnPayer.textContent = `Transaction ${this.getStatutText(this.transactionActuelle.statut)}`;
         } else {
-            btnPayer.innerHTML = '<i class="fas fa-check-circle"></i> Confirmer le paiement';
+            btnPayer.textContent = 'Confirmer le Paiement';
         }
+    }
+    
+    afficherBoissonsTransaction() {
+        const listeElement = document.getElementById('liste-boissons');
+        listeElement.innerHTML = '';
+        
+        this.transactionActuelle.boissons.forEach(boisson => {
+            const item = document.createElement('div');
+            item.className = 'boisson-item';
+            item.innerHTML = `
+                <span>${boisson.icone || '🥤'} ${boisson.nom}</span>
+                <span>${boisson.prix} FCFA</span>
+            `;
+            listeElement.appendChild(item);
+        });
+    }
+    
+    getStatutText(statut) {
+        const statuts = {
+            'en_attente': 'En attente',
+            'paye': 'Payé',
+            'annule': 'Annulé',
+            'expire': 'Expiré'
+        };
+        return statuts[statut] || statut;
     }
     
     async effectuerPaiement() {
@@ -472,153 +476,47 @@ class ApplicationUtilisateur {
             const result = await response.json();
             
             if (result.success) {
-                this.jouerSon('success');
-                this.afficherModalConfirmation('Paiement réussi!', result.message || 'Votre commande sera prête dans 4 secondes.');
-                
-                // Mettre à jour le solde
-                this.userData.solde = result.nouveauSolde;
-                this.mettreAJourSolde();
+                this.chargerSolde();
+                this.parler('Paiement réussi! Votre commande sera prête dans 4 secondes.');
+                alert(result.message);
                 
                 // Recharger l'historique
                 this.chargerHistorique();
+                
+                // Revenir au scanner après paiement
+                setTimeout(() => {
+                    this.changerSection('scanner');
+                    this.demarrerScanner();
+                }, 2000);
             } else {
-                this.afficherMessage(result.error, 'error');
+                throw new Error(result.error);
             }
         } catch (error) {
             console.error('Erreur paiement:', error);
-            this.afficherMessage('Erreur de connexion au serveur', 'error');
+            alert('Erreur: ' + error.message);
         }
     }
     
     annulerTransaction() {
         this.transactionActuelle = null;
-        this.changerOnglet('accueil');
+        this.changerSection('scanner');
+        this.demarrerScanner();
     }
     
-    selectionnerOperateur(operateur) {
-        this.operateurSelectionne = operateur;
-        
-        // Mettre à jour l'interface
-        document.querySelectorAll('.operateur-card').forEach(card => {
-            card.classList.remove('selected');
-        });
-        document.querySelector(`[data-operateur="${operateur}"]`).classList.add('selected');
-        
-        this.verifierFormulaireRecharge();
-    }
-    
-    selectionnerMontant(montant) {
-        this.montantSelectionne = montant;
-        
-        // Mettre à jour l'interface
-        document.querySelectorAll('.montant-rapide').forEach(m => {
-            m.classList.remove('selected');
-        });
-        document.querySelector(`[data-montant="${montant}"]`).classList.add('selected');
-        
-        // Mettre à jour le champ personnalisé
-        document.getElementById('montant-personnalise').value = montant;
-        
-        this.verifierFormulaireRecharge();
-    }
-    
-    selectionnerMontantPersonnalise(montant) {
-        if (montant && montant > 0) {
-            this.montantSelectionne = parseInt(montant);
-            
-            // Désélectionner les montants rapides
-            document.querySelectorAll('.montant-rapide').forEach(m => {
-                m.classList.remove('selected');
-            });
-            
-            this.verifierFormulaireRecharge();
-        }
-    }
-    
-    verifierFormulaireRecharge() {
-        const numero = document.getElementById('numero-recharge').value;
-        const btnConfirmer = document.getElementById('btn-confirmer-recharge');
-        
-        if (this.operateurSelectionne && this.montantSelectionne && numero && numero.length >= 9) {
-            btnConfirmer.disabled = false;
-        } else {
-            btnConfirmer.disabled = true;
-        }
-    }
-    
-    async confirmerRecharge() {
-        const numero = document.getElementById('numero-recharge').value;
-        
-        if (!this.operateurSelectionne || !this.montantSelectionne || !numero) {
-            this.afficherMessage('Veuillez remplir tous les champs', 'error');
-            return;
-        }
+    async chargerHistorique() {
+        if (!this.token) return;
         
         try {
-            const response = await fetch(`${this.API_URL}/api/recharger`, {
-                method: 'POST',
+            const response = await fetch(`${this.API_URL}/api/historique?limit=20`, {
                 headers: {
-                    'Content-Type': 'application/json',
                     'Authorization': `Bearer ${this.token}`
-                },
-                body: JSON.stringify({
-                    montant: this.montantSelectionne,
-                    operateur: this.operateurSelectionne,
-                    numeroTelephone: numero
-                })
+                }
             });
             
             const result = await response.json();
             
             if (result.success) {
-                this.afficherModalConfirmation('Rechargement réussi!', result.message);
-                
-                // Mettre à jour le solde
-                this.userData.solde = result.nouveauSolde;
-                this.mettreAJourSolde();
-                
-                // Réinitialiser le formulaire
-                this.reinitialiserFormulaireRecharge();
-            } else {
-                this.afficherMessage(result.error, 'error');
-            }
-        } catch (error) {
-            console.error('Erreur recharge:', error);
-            this.afficherMessage('Erreur de connexion au serveur', 'error');
-        }
-    }
-    
-    reinitialiserFormulaireRecharge() {
-        this.operateurSelectionne = null;
-        this.montantSelectionne = null;
-        
-        document.querySelectorAll('.operateur-card').forEach(card => {
-            card.classList.remove('selected');
-        });
-        
-        document.querySelectorAll('.montant-rapide').forEach(m => {
-            m.classList.remove('selected');
-        });
-        
-        document.getElementById('montant-personnalise').value = '';
-        document.getElementById('numero-recharge').value = '';
-        document.getElementById('btn-confirmer-recharge').disabled = true;
-    }
-    
-    async chargerHistorique() {
-        try {
-            const response = await fetch(`${this.API_URL}/api/historique`, {
-                headers: {
-                    'Authorization': `Bearer ${this.token}`
-                }
-            });
-            
-            if (response.ok) {
-                const result = await response.json();
-                if (result.success) {
-                    this.afficherHistorique(result.data);
-                    this.calculerStats(result.data);
-                }
+                this.afficherHistorique(result.data);
             }
         } catch (error) {
             console.error('Erreur chargement historique:', error);
@@ -626,152 +524,50 @@ class ApplicationUtilisateur {
     }
     
     afficherHistorique(transactions) {
-        const liste = document.getElementById('liste-historique');
-        const listeRecent = document.getElementById('liste-transactions-recentes');
+        const historiqueElement = document.getElementById('historique-transactions');
         
-        if (!transactions || transactions.length === 0) {
-            liste.innerHTML = '<div class="historique-vide">Aucune transaction trouvée</div>';
-            listeRecent.innerHTML = '<div class="transactions-vide">Aucune transaction récente</div>';
+        if (transactions.length === 0) {
+            historiqueElement.innerHTML = '<div class="transaction-item">Aucune transaction</div>';
             return;
         }
         
-        // Historique complet
-        liste.innerHTML = transactions.map(transaction => `
-            <div class="historique-item">
-                <div class="historique-header-item">
-                    <span class="historique-id">${transaction.id}</span>
-                    <span class="historique-montant">${this.formatMontant(transaction.montant)} FCFA</span>
+        historiqueElement.innerHTML = '';
+        
+        transactions.forEach(transaction => {
+            const item = document.createElement('div');
+            item.className = 'transaction-item';
+            item.innerHTML = `
+                <div class="transaction-info">
+                    <div>${transaction.id}</div>
+                    <div class="transaction-montant">${transaction.montant} FCFA</div>
                 </div>
-                <div class="historique-date">${new Date(transaction.date).toLocaleString()}</div>
-                <div class="historique-statut statut-${transaction.statut}">
+                <div class="transaction-statut ${transaction.statut}">
                     ${this.getStatutText(transaction.statut)}
                 </div>
-            </div>
-        `).join('');
-        
-        // Transactions récentes (5 premières)
-        const recentes = transactions.slice(0, 5);
-        listeRecent.innerHTML = recentes.map(transaction => `
-            <div class="transaction-item">
-                <div class="transaction-icon">
-                    <i class="fas fa-shopping-cart"></i>
-                </div>
-                <div class="transaction-details">
-                    <div class="transaction-titre">Transaction ${transaction.id}</div>
-                    <div class="transaction-date">${new Date(transaction.date).toLocaleDateString()}</div>
-                </div>
-                <div class="transaction-montant ${transaction.statut === 'paye' ? 'negatif' : ''}">
-                    -${this.formatMontant(transaction.montant)} FCFA
-                </div>
-            </div>
-        `).join('');
+            `;
+            historiqueElement.appendChild(item);
+        });
     }
     
-    calculerStats(transactions) {
-        const totalTransactions = transactions.length;
-        const montantTotal = transactions
-            .filter(t => t.statut === 'paye')
-            .reduce((sum, t) => sum + t.montant, 0);
-        
-        document.getElementById('stat-total').textContent = totalTransactions;
-        document.getElementById('stat-montant').textContent = this.formatMontant(montantTotal);
-    }
-    
-    filtrerHistorique() {
-        // Implémentation basique du filtrage
-        this.chargerHistorique();
-    }
-    
-    afficherModalConfirmation(titre, message) {
-        document.getElementById('modal-titre').textContent = titre;
-        document.getElementById('modal-message').textContent = message;
-        document.getElementById('modal-confirmation').classList.add('active');
-    }
-    
-    fermerModal() {
-        document.getElementById('modal-confirmation').classList.remove('active');
-        this.changerOnglet('accueil');
-    }
-    
-    afficherMessage(message, type = 'info') {
-        // Implémentation basique des messages (à améliorer avec un système de notifications)
-        console.log(`${type.toUpperCase()}: ${message}`);
-        
-        if (type === 'error') {
-            this.jouerSon('error');
-        } else if (type === 'success') {
-            this.jouerSon('success');
+    parler(message) {
+        if ('speechSynthesis' in window) {
+            const utterance = new SpeechSynthesisUtterance(message);
+            utterance.lang = 'fr-FR';
+            utterance.rate = 1.0;
+            utterance.pitch = 1.0;
+            speechSynthesis.speak(utterance);
         }
         
-        // Pour l'instant, on utilise alert() mais idéalement il faudrait un système de toast
-        alert(message);
-    }
-    
-    jouerSon(type) {
-        const audio = document.getElementById(`audio-${type}`);
+        // Jouer un son de notification
+        const audio = document.getElementById('audio-notification');
         if (audio) {
             audio.currentTime = 0;
             audio.play().catch(e => console.log('Audio play failed:', e));
         }
     }
-    
-    formatMontant(montant) {
-        return new Intl.NumberFormat('fr-FR').format(montant);
-    }
-    
-    getStatutText(statut) {
-        const statuts = {
-            'en_attente': 'En attente',
-            'paye': 'Payée',
-            'annule': 'Annulée',
-            'expire': 'Expirée'
-        };
-        return statuts[statut] || statut;
-    }
-    
-    initialiserDateTime() {
-        const updateDateTime = () => {
-            const now = new Date();
-            const dateTimeElement = document.querySelector('.datetime');
-            if (dateTimeElement) {
-                dateTimeElement.textContent = now.toLocaleString('fr-FR', {
-                    weekday: 'short',
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
-            }
-        };
-        
-        updateDateTime();
-        setInterval(updateDateTime, 60000); // Mettre à jour chaque minute
-    }
-    
-    togglePassword(btn) {
-        const input = btn.closest('.input-group').querySelector('input');
-        const icon = btn.querySelector('i');
-        
-        if (input.type === 'password') {
-            input.type = 'text';
-            icon.className = 'fas fa-eye-slash';
-        } else {
-            input.type = 'password';
-            icon.className = 'fas fa-eye';
-        }
-    }
-    
-    chargerDonneesInitiales() {
-        // Charger les données initiales si l'utilisateur est connecté
-        if (this.token) {
-            this.chargerSolde();
-            this.chargerHistorique();
-        }
-    }
 }
 
-// Initialiser l'application au chargement
+// Initialiser l'application
 document.addEventListener('DOMContentLoaded', function() {
-    window.app = new ApplicationUtilisateur();
+    window.utilisateurApp = new UtilisateurApp();
 });
