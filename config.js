@@ -1,4 +1,8 @@
-// Configuration de l'API - À MODIFIER AVEC VOTRE URL RENDER
 const CONFIG = {
-  API_URL: 'https://ns-1-0qzl.onrender.com' // Remplacez par votre URL Render
+  API_URL: 'https://votre-api.render.com' // Remplacez par votre URL Render
+};
+
+const OPERATEURS = {
+  MTN: 'MTN Mobile Money',
+  Orange: 'Orange Money'
 };
