@@ -3,246 +3,301 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CTL User - Votre Portefeuille Électronique</title>
+    <title>CTL Pay - Application Mobile</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 </head>
 <body>
-    <div class="app-container">
-        <!-- Header -->
-        <header class="app-header">
-            <div class="header-content">
-                <div class="logo">
-                    <i class="fas fa-wallet"></i>
-                    <h1>CTL USER</h1>
+    <!-- Page de Connexion -->
+    <div id="page-connexion" class="page active">
+        <div class="auth-container">
+            <div class="auth-header">
+                <div class="app-logo">
+                    <h1>🥤 CTL Pay</h1>
+                    <p>Votre porte-monnaie digital</p>
                 </div>
-                <div class="header-actions" id="header-actions">
-                    <button id="btn-connexion" class="btn-connexion">
-                        <i class="fas fa-sign-in-alt"></i> Connexion
-                    </button>
+            </div>
+            
+            <div class="auth-tabs">
+                <button class="tab-btn active" data-tab="connexion">Connexion</button>
+                <button class="tab-btn" data-tab="inscription">Inscription</button>
+            </div>
+
+            <!-- Formulaire Connexion -->
+            <form id="form-connexion" class="auth-form active">
+                <div class="input-group">
+                    <input type="email" id="login-email" placeholder="Adresse email" required>
+                </div>
+                <div class="input-group">
+                    <input type="password" id="login-password" placeholder="Mot de passe" required>
+                </div>
+                <button type="submit" class="btn-primary">
+                    <span>🔐 Se Connecter</span>
+                </button>
+                
+                <div class="demo-credentials">
+                    <p>Compte démo : demo@ctl.cm / demo123</p>
+                </div>
+            </form>
+
+            <!-- Formulaire Inscription -->
+            <form id="form-inscription" class="auth-form">
+                <div class="input-group">
+                    <input type="text" id="inscription-nom" placeholder="Nom complet" required>
+                </div>
+                <div class="input-group">
+                    <input type="email" id="inscription-email" placeholder="Adresse email" required>
+                </div>
+                <div class="input-group">
+                    <input type="tel" id="inscription-telephone" placeholder="Numéro de téléphone">
+                </div>
+                <div class="input-group">
+                    <input type="password" id="inscription-password" placeholder="Mot de passe" required>
+                </div>
+                <button type="submit" class="btn-primary">
+                    <span>📝 Créer mon Compte</span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Application Principale -->
+    <div id="page-app" class="page">
+        <!-- Header Application -->
+        <header class="app-header">
+            <div class="header-top">
+                <div class="user-info">
+                    <div class="avatar">👤</div>
+                    <div class="user-details">
+                        <h3 id="user-nom">Utilisateur</h3>
+                        <p id="user-email">email@example.com</p>
+                    </div>
+                </div>
+                <button id="btn-deconnexion" class="btn-icon">🚪</button>
+            </div>
+            
+            <div class="solde-card">
+                <div class="solde-info">
+                    <p>Solde Disponible</p>
+                    <h2 id="solde-utilisateur">0 FCFA</h2>
+                </div>
+                <div class="solde-actions">
+                    <button id="btn-recharger" class="btn-action">💳 Recharger</button>
+                    <button id="btn-historique" class="btn-action">📊 Historique</button>
                 </div>
             </div>
         </header>
 
-        <!-- Main Content -->
-        <main class="main-content">
-            <!-- Section Connexion/Inscription -->
-            <section class="auth-section" id="auth-section">
-                <div class="auth-container">
-                    <div class="auth-tabs">
-                        <button class="tab-btn active" data-tab="connexion">Connexion</button>
-                        <button class="tab-btn" data-tab="inscription">Inscription</button>
-                    </div>
+        <!-- Navigation -->
+        <nav class="bottom-nav">
+            <button class="nav-btn active" data-page="scanner">
+                <span class="nav-icon">📱</span>
+                <span class="nav-text">Scanner</span>
+            </button>
+            <button class="nav-btn" data-page="transactions">
+                <span class="nav-icon">💸</span>
+                <span class="nav-text">Transactions</span>
+            </button>
+            <button class="nav-btn" data-page="profil">
+                <span class="nav-icon">👤</span>
+                <span class="nav-text">Profil</span>
+            </button>
+        </nav>
 
-                    <!-- Formulaire de Connexion -->
-                    <div class="tab-content active" id="connexion-tab">
-                        <form id="form-connexion" class="auth-form">
-                            <div class="form-group">
-                                <label for="email-connexion">Email</label>
-                                <input type="email" id="email-connexion" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="password-connexion">Mot de passe</label>
-                                <input type="password" id="password-connexion" required>
-                            </div>
-                            <button type="submit" class="btn-auth">
-                                <i class="fas fa-sign-in-alt"></i> Se connecter
-                            </button>
-                        </form>
-                    </div>
-
-                    <!-- Formulaire d'Inscription -->
-                    <div class="tab-content" id="inscription-tab">
-                        <form id="form-inscription" class="auth-form">
-                            <div class="form-group">
-                                <label for="nom-inscription">Nom complet</label>
-                                <input type="text" id="nom-inscription" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="email-inscription">Email</label>
-                                <input type="email" id="email-inscription" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="telephone-inscription">Téléphone</label>
-                                <input type="tel" id="telephone-inscription">
-                            </div>
-                            <div class="form-group">
-                                <label for="password-inscription">Mot de passe</label>
-                                <input type="password" id="password-inscription" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="confirm-password">Confirmer le mot de passe</label>
-                                <input type="password" id="confirm-password" required>
-                            </div>
-                            <button type="submit" class="btn-auth">
-                                <i class="fas fa-user-plus"></i> Créer un compte
-                            </button>
-                        </form>
-                    </div>
+        <!-- Page Scanner -->
+        <div id="page-scanner" class="app-page active">
+            <div class="scanner-container">
+                <h2>Scanner QR Code</h2>
+                <p>Scannez le code QR du distributeur</p>
+                
+                <div class="scanner-frame">
+                    <video id="camera-feed" autoplay playsinline></video>
+                    <div class="scanner-overlay"></div>
+                    <div class="scanner-guide"></div>
                 </div>
-            </section>
-
-            <!-- Section Dashboard (après connexion) -->
-            <section class="dashboard-section" id="dashboard-section">
-                <!-- Bannière Solde -->
-                <div class="solde-banner">
-                    <div class="solde-info">
-                        <div class="solde-label">Votre Solde</div>
-                        <div class="solde-montant" id="solde-utilisateur">0 FCFA</div>
+                
+                <div class="manual-input">
+                    <p>ou saisir manuellement :</p>
+                    <div class="input-group">
+                        <input type="text" id="transaction-id" placeholder="ID de transaction (ex: TXA1B2C3)">
+                        <button id="btn-charger-transaction" class="btn-secondary">Charger</button>
                     </div>
-                    <div class="solde-actions">
-                        <button id="btn-recharger" class="btn-recharger">
-                            <i class="fas fa-plus"></i> Recharger
-                        </button>
-                        <button id="btn-vider" class="btn-vider">
-                            <i class="fas fa-trash"></i> Vider
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Navigation -->
-                <nav class="app-nav">
-                    <button class="nav-btn active" data-section="scanner">
-                        <i class="fas fa-qrcode"></i>
-                        <span>Payer</span>
-                    </button>
-                    <button class="nav-btn" data-section="historique">
-                        <i class="fas fa-history"></i>
-                        <span>Historique</span>
-                    </button>
-                    <button class="nav-btn" data-section="profil">
-                        <i class="fas fa-user"></i>
-                        <span>Profil</span>
-                    </button>
-                </nav>
-
-                <!-- Section Scanner -->
-                <div class="content-section active" id="scanner-section">
-                    <div class="scanner-container">
-                        <div class="scanner-frame">
-                            <video id="camera-feed" width="300" height="300" autoplay playsinline></video>
-                            <div class="scanner-overlay"></div>
-                        </div>
-                        <p class="scanner-alternative">ou saisir manuellement l'ID de transaction</p>
-                        <div class="input-group">
-                            <input type="text" id="transaction-id" placeholder="Ex: TXA1B2C3">
-                            <button id="btn-charger-transaction" class="btn-charger">
-                                <i class="fas fa-search"></i> Charger
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Section Transaction -->
-                <div class="content-section" id="transaction-section">
-                    <div class="transaction-header">
-                        <h3><i class="fas fa-receipt"></i> Détails de la Transaction</h3>
-                    </div>
-                    <div class="transaction-details">
-                        <div class="detail-item">
-                            <span>ID:</span>
-                            <span id="detail-transaction-id">-</span>
-                        </div>
-                        <div class="detail-item">
-                            <span>Montant:</span>
-                            <span id="detail-montant" class="montant">0 FCFA</span>
-                        </div>
-                        <div class="detail-item">
-                            <span>Statut:</span>
-                            <span id="detail-statut">-</span>
-                        </div>
-                    </div>
-                    <div class="boissons-liste" id="liste-boissons">
-                        <!-- Liste des boissons -->
-                    </div>
-                    <div class="transaction-actions">
-                        <button id="btn-payer" class="btn-payer">
-                            <i class="fas fa-credit-card"></i> Confirmer le Paiement
-                        </button>
-                        <button id="btn-annuler-transaction" class="btn-annuler">
-                            <i class="fas fa-times"></i> Annuler
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Section Historique -->
-                <div class="content-section" id="historique-section">
-                    <div class="historique-header">
-                        <h3><i class="fas fa-history"></i> Historique des Transactions</h3>
-                    </div>
-                    <div class="historique-list" id="historique-transactions">
-                        <!-- Historique -->
-                    </div>
-                </div>
-
-                <!-- Section Profil -->
-                <div class="content-section" id="profil-section">
-                    <div class="profil-header">
-                        <h3><i class="fas fa-user-circle"></i> Profil Utilisateur</h3>
-                    </div>
-                    <div class="profil-info">
-                        <div class="info-item">
-                            <span>Nom:</span>
-                            <span id="profil-nom">-</span>
-                        </div>
-                        <div class="info-item">
-                            <span>Email:</span>
-                            <span id="profil-email">-</span>
-                        </div>
-                        <div class="info-item">
-                            <span>Téléphone:</span>
-                            <span id="profil-telephone">-</span>
-                        </div>
-                        <div class="info-item">
-                            <span>Membre depuis:</span>
-                            <span id="profil-date">-</span>
-                        </div>
-                    </div>
-                    <button id="btn-deconnexion" class="btn-deconnexion">
-                        <i class="fas fa-sign-out-alt"></i> Déconnexion
-                    </button>
-                </div>
-            </section>
-        </main>
-
-        <!-- Modal Rechargement -->
-        <div class="modal" id="recharge-modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3><i class="fas fa-mobile-alt"></i> Recharger mon compte</h3>
-                    <button class="modal-close" id="close-recharge">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <form id="form-recharge">
-                        <div class="form-group">
-                            <label for="montant-recharge">Montant (FCFA)</label>
-                            <input type="number" id="montant-recharge" min="100" step="100" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="operateur">Opérateur</label>
-                            <select id="operateur" required>
-                                <option value="">Choisir un opérateur</option>
-                                <option value="MTN">MTN Mobile Money</option>
-                                <option value="Orange">Orange Money</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="numero-telephone">Numéro de téléphone</label>
-                            <input type="tel" id="numero-telephone" required>
-                        </div>
-                        <button type="submit" class="btn-recharger-confirm">
-                            <i class="fas fa-check"></i> Confirmer le rechargement
-                        </button>
-                    </form>
                 </div>
             </div>
         </div>
 
-        <!-- Audio pour les notifications vocales -->
-        <audio id="audio-notification" preload="auto">
-            <source src="data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQwAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAABAAACcQCAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////8AAABQTEFNRTMuMTAwBKkAAAAAAAAAADUgJAO8IQAAQAAAAnHf0d+zAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//sQZAAP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAETEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV" type="audio/mpeg">
-        </audio>
+        <!-- Page Transaction -->
+        <div id="page-transaction" class="app-page">
+            <div class="transaction-header">
+                <button class="btn-back" id="btn-back-transaction">← Retour</button>
+                <h2>Détails Transaction</h2>
+            </div>
+            
+            <div class="transaction-details">
+                <div class="detail-card">
+                    <h4>ID Transaction</h4>
+                    <p id="detail-transaction-id" class="transaction-id">-</p>
+                </div>
+                
+                <div class="detail-card">
+                    <h4>Montant Total</h4>
+                    <p id="detail-montant" class="montant">0 FCFA</p>
+                </div>
+                
+                <div class="detail-card">
+                    <h4>Statut</h4>
+                    <p id="detail-statut" class="statut">-</p>
+                </div>
+
+                <div class="boissons-list">
+                    <h4>Boissons Sélectionnées</h4>
+                    <div id="liste-boissons" class="liste-boissons">
+                        <!-- Liste des boissons -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="paiement-actions">
+                <button id="btn-payer" class="btn-payer">
+                    <span>💰 Payer maintenant</span>
+                </button>
+                <button id="btn-annuler-transaction" class="btn-secondary">Annuler</button>
+            </div>
+        </div>
+
+        <!-- Page Historique -->
+        <div id="page-transactions" class="app-page">
+            <div class="page-header">
+                <h2>Historique des Transactions</h2>
+                <button id="btn-rafraichir" class="btn-icon">🔄</button>
+            </div>
+            
+            <div class="filtres-transactions">
+                <button class="filtre-btn active" data-filtre="tous">Toutes</button>
+                <button class="filtre-btn" data-filtre="paye">Payées</button>
+                <button class="filtre-btn" data-filtre="recharge">Recharges</button>
+            </div>
+            
+            <div id="historique-transactions" class="historique-list">
+                <!-- Historique des transactions -->
+            </div>
+        </div>
+
+        <!-- Page Profil -->
+        <div id="page-profil" class="app-page">
+            <div class="profil-header">
+                <div class="profil-avatar">
+                    <div class="avatar-large">👤</div>
+                </div>
+                <h2 id="profil-nom">Utilisateur</h2>
+                <p id="profil-email">email@example.com</p>
+            </div>
+            
+            <div class="profil-stats">
+                <div class="stat-item">
+                    <span class="stat-value" id="profil-solde">0 FCFA</span>
+                    <span class="stat-label">Solde Actuel</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-value" id="profil-transactions">0</span>
+                    <span class="stat-label">Transactions</span>
+                </div>
+            </div>
+            
+            <div class="profil-actions">
+                <button class="profil-btn" id="btn-modifier-profil">
+                    <span>✏️ Modifier le profil</span>
+                </button>
+                <button class="profil-btn" id="btn-aide">
+                    <span>❓ Centre d'aide</span>
+                </button>
+                <button class="profil-btn deconnexion" id="btn-deconnexion-profil">
+                    <span>🚪 Déconnexion</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Modal Rechargement -->
+        <div id="modal-rechargement" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>💳 Recharger mon Compte</h2>
+                    <button class="btn-fermer" id="fermer-rechargement">×</button>
+                </div>
+                
+                <div class="rechargement-options">
+                    <h4>Montants Rapides</h4>
+                    <div class="montants-rapides">
+                        <div class="montant-option" data-montant="1000">1 000 FCFA</div>
+                        <div class="montant-option" data-montant="5000">5 000 FCFA</div>
+                        <div class="montant-option" data-montant="10000">10 000 FCFA</div>
+                        <div class="montant-option" data-montant="20000">20 000 FCFA</div>
+                    </div>
+                    
+                    <div class="montant-personnalise">
+                        <h4>Montant Personnalisé</h4>
+                        <input type="number" id="montant-personnalise" placeholder="Entrez le montant" min="100">
+                    </div>
+                    
+                    <div class="methodes-paiement">
+                        <h4>Méthode de Paiement</h4>
+                        <div class="methode-option active" data-methode="MTN">
+                            <span class="methode-icon">📱</span>
+                            <span>MTN Mobile Money</span>
+                        </div>
+                        <div class="methode-option" data-methode="Orange">
+                            <span class="methode-icon">🎯</span>
+                            <span>Orange Money</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <button id="btn-confirmer-rechargement" class="btn-primary">
+                    <span>💳 Confirmer le Rechargement</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Modal Paiement -->
+        <div id="modal-paiement" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>💰 Confirmer le Paiement</h2>
+                    <button class="btn-fermer" id="fermer-paiement">×</button>
+                </div>
+                
+                <div class="paiement-details">
+                    <div class="detail-item">
+                        <span>Montant à payer :</span>
+                        <strong id="paiement-montant">0 FCFA</strong>
+                    </div>
+                    <div class="detail-item">
+                        <span>Solde après paiement :</span>
+                        <strong id="solde-apres-paiement">0 FCFA</strong>
+                    </div>
+                </div>
+                
+                <div class="methodes-paiement">
+                    <h4>Choisir la méthode :</h4>
+                    <div class="methode-option active" data-methode="solde">
+                        <span class="methode-icon">💳</span>
+                        <span>Solde CTL Pay</span>
+                    </div>
+                </div>
+                
+                <button id="btn-confirmer-paiement" class="btn-payer">
+                    <span>✅ Confirmer le Paiement</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Notification -->
+        <div id="notification" class="notification">
+            <div class="notification-content">
+                <span class="notification-icon" id="notification-icon">✅</span>
+                <p id="notification-message"></p>
+            </div>
+        </div>
     </div>
 
     <script src="config.js"></script>
