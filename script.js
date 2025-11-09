@@ -1,4 +1,4 @@
-class UtilisateurApp {
+class ApplicationUtilisateur {
     constructor() {
         this.API_URL = CONFIG.API_URL;
         this.utilisateur = null;
@@ -15,105 +15,128 @@ class UtilisateurApp {
     }
     
     verifierAuthentification() {
-        const token = localStorage.getItem('token');
-        const utilisateur = localStorage.getItem('utilisateur');
+        const token = localStorage.getItem('ctl_token');
+        const utilisateur = localStorage.getItem('ctl_utilisateur');
         
         if (token && utilisateur) {
             this.token = token;
             this.utilisateur = JSON.parse(utilisateur);
-            this.afficherDashboard();
+            this.afficherApplication();
         } else {
-            this.afficherAuth();
+            this.afficherAuthentification();
+        }
+    }
+    
+    afficherAuthentification() {
+        document.getElementById('page-connexion').classList.add('active');
+        document.getElementById('page-app').classList.remove('active');
+    }
+    
+    afficherApplication() {
+        document.getElementById('page-connexion').classList.remove('active');
+        document.getElementById('page-app').classList.add('active');
+        
+        this.mettreAJourInterfaceUtilisateur();
+        this.chargerSolde();
+        this.demarrerScanner();
+    }
+    
+    mettreAJourInterfaceUtilisateur() {
+        if (this.utilisateur) {
+            document.getElementById('user-nom').textContent = this.utilisateur.nom;
+            document.getElementById('user-email').textContent = this.utilisateur.email;
+            document.getElementById('profil-nom').textContent = this.utilisateur.nom;
+            document.getElementById('profil-email').textContent = this.utilisateur.email;
         }
     }
     
     setupEventListeners() {
-        // Navigation par onglets
-        document.querySelectorAll('.nav-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const section = e.target.closest('.nav-btn').dataset.section;
-                this.changerSection(section);
-            });
-        });
+        // Authentification
+        document.getElementById('form-connexion').addEventListener('submit', (e) => this.connexion(e));
+        document.getElementById('form-inscription').addEventListener('submit', (e) => this.inscription(e));
         
-        // Formulaire de connexion
-        document.getElementById('form-connexion').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.connexion();
-        });
-        
-        // Formulaire d'inscription
-        document.getElementById('form-inscription').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.inscription();
-        });
-        
-        // Tabs d'authentification
+        // Tabs authentification
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const tab = e.target.dataset.tab;
+                const tab = e.target.getAttribute('data-tab');
                 this.changerTabAuth(tab);
             });
         });
         
-        // Rechargement
-        document.getElementById('btn-recharger').addEventListener('click', () => {
-            this.afficherModalRechargement();
+        // Navigation
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const page = e.target.closest('.nav-btn').getAttribute('data-page');
+                this.changerPage(page);
+            });
         });
         
-        document.getElementById('close-recharge').addEventListener('click', () => {
-            this.cacherModalRechargement();
+        // Actions
+        document.getElementById('btn-deconnexion').addEventListener('click', () => this.deconnexion());
+        document.getElementById('btn-deconnexion-profil').addEventListener('click', () => this.deconnexion());
+        document.getElementById('btn-recharger').addEventListener('click', () => this.afficherModalRechargement());
+        document.getElementById('btn-historique').addEventListener('click', () => this.chargerHistorique());
+        document.getElementById('btn-rafraichir').addEventListener('click', () => this.chargerHistorique());
+        
+        // Scanner
+        document.getElementById('btn-charger-transaction').addEventListener('click', () => this.chargerTransaction());
+        document.getElementById('transaction-id').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') this.chargerTransaction();
         });
         
-        document.getElementById('form-recharge').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.rechargerCompte();
+        // Transactions
+        document.getElementById('btn-back-transaction').addEventListener('click', () => this.retourAuScanner());
+        document.getElementById('btn-annuler-transaction').addEventListener('click', () => this.annulerTransaction());
+        document.getElementById('btn-payer').addEventListener('click', () => this.afficherModalPaiement());
+        
+        // Modals
+        document.getElementById('fermer-rechargement').addEventListener('click', () => this.fermerModalRechargement());
+        document.getElementById('fermer-paiement').addEventListener('click', () => this.fermerModalPaiement());
+        document.getElementById('btn-confirmer-rechargement').addEventListener('click', () => this.confirmerRechargement());
+        document.getElementById('btn-confirmer-paiement').addEventListener('click', () => this.confirmerPaiement());
+        
+        // Filtres historique
+        document.querySelectorAll('.filtre-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const filtre = e.target.getAttribute('data-filtre');
+                this.filtrerHistorique(filtre);
+            });
         });
         
-        // Vider le compte
-        document.getElementById('btn-vider').addEventListener('click', () => {
-            this.viderCompte();
+        // Options rechargement
+        document.querySelectorAll('.montant-option').forEach(option => {
+            option.addEventListener('click', (e) => {
+                document.querySelectorAll('.montant-option').forEach(o => o.classList.remove('active'));
+                e.target.classList.add('active');
+            });
         });
         
-        // Déconnexion
-        document.getElementById('btn-deconnexion').addEventListener('click', () => {
-            this.deconnexion();
-        });
-        
-        // Transaction
-        document.getElementById('btn-charger-transaction').addEventListener('click', () => {
-            this.chargerTransaction();
-        });
-        
-        document.getElementById('btn-payer').addEventListener('click', () => {
-            this.effectuerPaiement();
-        });
-        
-        document.getElementById('btn-annuler-transaction').addEventListener('click', () => {
-            this.annulerTransaction();
+        document.querySelectorAll('.methode-option').forEach(option => {
+            option.addEventListener('click', (e) => {
+                document.querySelectorAll('.methode-option').forEach(o => o.classList.remove('active'));
+                e.target.classList.add('active');
+            });
         });
     }
     
     changerTabAuth(tab) {
-        // Désactiver tous les tabs
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+        document.querySelectorAll('.auth-form').forEach(form => form.classList.remove('active'));
         
-        // Activer le tab sélectionné
         document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
-        document.getElementById(`${tab}-tab`).classList.add('active');
+        document.getElementById(`form-${tab}`).classList.add('active');
     }
     
-    async connexion() {
-        const email = document.getElementById('email-connexion').value;
-        const password = document.getElementById('password-connexion').value;
+    async connexion(e) {
+        e.preventDefault();
+        
+        const email = document.getElementById('login-email').value;
+        const password = document.getElementById('login-password').value;
         
         try {
             const response = await fetch(`${this.API_URL}/api/connexion`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password })
             });
             
@@ -121,214 +144,73 @@ class UtilisateurApp {
             
             if (result.success) {
                 this.token = result.token;
-                this.utilisateur = result.user;
+                this.utilisateur = result.utilisateur;
                 
-                // Sauvegarder dans le localStorage
-                localStorage.setItem('token', this.token);
-                localStorage.setItem('utilisateur', JSON.stringify(this.utilisateur));
+                localStorage.setItem('ctl_token', this.token);
+                localStorage.setItem('ctl_utilisateur', JSON.stringify(this.utilisateur));
                 
-                this.afficherDashboard();
-                this.parler('Connexion réussie');
+                this.afficherApplication();
+                this.afficherNotification('✅ Connexion réussie!', 'success');
             } else {
-                throw new Error(result.error);
+                this.afficherNotification('❌ ' + result.error, 'error');
             }
         } catch (error) {
-            console.error('Erreur connexion:', error);
-            alert('Erreur: ' + error.message);
+            this.afficherNotification('❌ Erreur de connexion au serveur', 'error');
         }
     }
     
-    async inscription() {
-        const nom = document.getElementById('nom-inscription').value;
-        const email = document.getElementById('email-inscription').value;
-        const telephone = document.getElementById('telephone-inscription').value;
-        const password = document.getElementById('password-inscription').value;
-        const confirmPassword = document.getElementById('confirm-password').value;
+    async inscription(e) {
+        e.preventDefault();
         
-        if (password !== confirmPassword) {
-            alert('Les mots de passe ne correspondent pas');
-            return;
-        }
+        const nom = document.getElementById('inscription-nom').value;
+        const email = document.getElementById('inscription-email').value;
+        const telephone = document.getElementById('inscription-telephone').value;
+        const password = document.getElementById('inscription-password').value;
         
         try {
             const response = await fetch(`${this.API_URL}/api/inscription`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ nom, email, telephone, password })
             });
             
             const result = await response.json();
             
             if (result.success) {
-                this.token = result.token;
-                this.utilisateur = result.user;
+                this.afficherNotification('✅ Compte créé avec succès!', 'success');
+                this.changerTabAuth('connexion');
                 
-                localStorage.setItem('token', this.token);
-                localStorage.setItem('utilisateur', JSON.stringify(this.utilisateur));
-                
-                this.afficherDashboard();
-                this.parler('Inscription réussie');
+                // Pré-remplir le formulaire de connexion
+                document.getElementById('login-email').value = email;
+                document.getElementById('login-password').value = password;
             } else {
-                throw new Error(result.error);
+                this.afficherNotification('❌ ' + result.error, 'error');
             }
         } catch (error) {
-            console.error('Erreur inscription:', error);
-            alert('Erreur: ' + error.message);
+            this.afficherNotification('❌ Erreur de connexion au serveur', 'error');
         }
     }
     
     deconnexion() {
-        localStorage.removeItem('token');
-        localStorage.removeItem('utilisateur');
+        localStorage.removeItem('ctl_token');
+        localStorage.removeItem('ctl_utilisateur');
         this.token = null;
         this.utilisateur = null;
-        this.afficherAuth();
-        this.parler('Déconnexion réussie');
+        this.afficherAuthentification();
+        this.afficherNotification('👋 À bientôt!', 'info');
     }
     
-    afficherAuth() {
-        document.getElementById('auth-section').style.display = 'block';
-        document.getElementById('dashboard-section').style.display = 'none';
-        document.getElementById('header-actions').innerHTML = `
-            <button id="btn-connexion" class="btn-connexion">
-                <i class="fas fa-sign-in-alt"></i> Connexion
-            </button>
-        `;
-    }
-    
-    afficherDashboard() {
-        document.getElementById('auth-section').style.display = 'none';
-        document.getElementById('dashboard-section').style.display = 'block';
-        document.getElementById('header-actions').innerHTML = `
-            <span>Bonjour, ${this.utilisateur.nom}</span>
-        `;
-        
-        this.mettreAJourProfil();
-        this.chargerSolde();
-        this.chargerHistorique();
-        this.demarrerScanner();
-    }
-    
-    mettreAJourProfil() {
-        document.getElementById('profil-nom').textContent = this.utilisateur.nom;
-        document.getElementById('profil-email').textContent = this.utilisateur.email;
-        document.getElementById('profil-telephone').textContent = this.utilisateur.telephone || 'Non renseigné';
-        document.getElementById('profil-date').textContent = new Date(this.utilisateur.created_at).toLocaleDateString('fr-FR');
-    }
-    
-    async chargerSolde() {
-        if (!this.token) return;
-        
-        try {
-            const response = await fetch(`${this.API_URL}/api/profil`, {
-                headers: {
-                    'Authorization': `Bearer ${this.token}`
-                }
-            });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                document.getElementById('solde-utilisateur').textContent = `${result.user.solde} FCFA`;
-            }
-        } catch (error) {
-            console.error('Erreur chargement solde:', error);
-        }
-    }
-    
-    afficherModalRechargement() {
-        document.getElementById('recharge-modal').classList.add('active');
-    }
-    
-    cacherModalRechargement() {
-        document.getElementById('recharge-modal').classList.remove('active');
-    }
-    
-    async rechargerCompte() {
-        const montant = document.getElementById('montant-recharge').value;
-        const operateur = document.getElementById('operateur').value;
-        const numeroTelephone = document.getElementById('numero-telephone').value;
-        
-        if (!montant || !operateur || !numeroTelephone) {
-            alert('Veuillez remplir tous les champs');
-            return;
-        }
-        
-        try {
-            const response = await fetch(`${this.API_URL}/api/recharger`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${this.token}`
-                },
-                body: JSON.stringify({
-                    montant: parseFloat(montant),
-                    operateur,
-                    numero_telephone: numeroTelephone
-                })
-            });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                this.cacherModalRechargement();
-                this.chargerSolde();
-                this.parler(`Rechargement de ${montant} FCFA effectué avec succès`);
-                alert(result.message);
-                
-                // Réinitialiser le formulaire
-                document.getElementById('form-recharge').reset();
-            } else {
-                throw new Error(result.error);
-            }
-        } catch (error) {
-            console.error('Erreur rechargement:', error);
-            alert('Erreur: ' + error.message);
-        }
-    }
-    
-    async viderCompte() {
-        if (!confirm('Êtes-vous sûr de vouloir vider votre compte ?')) {
-            return;
-        }
-        
-        try {
-            const response = await fetch(`${this.API_URL}/api/vider-compte`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${this.token}`
-                }
-            });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                this.chargerSolde();
-                this.parler('Compte vidé avec succès');
-                alert(result.message);
-            } else {
-                throw new Error(result.error);
-            }
-        } catch (error) {
-            console.error('Erreur vider compte:', error);
-            alert('Erreur: ' + error.message);
-        }
-    }
-    
-    changerSection(section) {
-        // Désactiver toutes les sections
-        document.querySelectorAll('.content-section').forEach(sec => sec.classList.remove('active'));
+    changerPage(page) {
+        document.querySelectorAll('.app-page').forEach(p => p.classList.remove('active'));
         document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
         
-        // Activer la section sélectionnée
-        document.getElementById(`${section}-section`).classList.add('active');
-        document.querySelector(`[data-section="${section}"]`).classList.add('active');
+        document.getElementById(`page-${page}`).classList.add('active');
+        document.querySelector(`[data-page="${page}"]`).classList.add('active');
         
-        // Si on revient au scanner, redémarrer la caméra
-        if (section === 'scanner') {
-            this.demarrerScanner();
+        if (page === 'transactions') {
+            this.chargerHistorique();
+        } else if (page === 'profil') {
+            this.mettreAJourProfil();
         }
     }
     
@@ -341,13 +223,13 @@ class UtilisateurApp {
             video.srcObject = stream;
             this.cameraActive = true;
             
-            this.scannerQRCode(stream);
+            this.scannerQRCode();
         } catch (error) {
             console.error('Erreur accès caméra:', error);
         }
     }
     
-    scannerQRCode(stream) {
+    scannerQRCode() {
         const video = document.getElementById('camera-feed');
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
@@ -393,15 +275,13 @@ class UtilisateurApp {
         const id = transactionId || document.getElementById('transaction-id').value.trim();
         
         if (!id) {
-            alert('Veuillez saisir un ID de transaction');
+            this.afficherNotification('❌ Veuillez saisir un ID de transaction', 'error');
             return;
         }
         
         try {
             const response = await fetch(`${this.API_URL}/api/transaction/${id}`, {
-                headers: {
-                    'Authorization': `Bearer ${this.token}`
-                }
+                headers: { 'Authorization': `Bearer ${this.token}` }
             });
             
             const result = await response.json();
@@ -409,17 +289,17 @@ class UtilisateurApp {
             if (result.success) {
                 this.transactionActuelle = result.data;
                 this.afficherDetailsTransaction();
+                this.changerPage('transaction');
             } else {
-                throw new Error(result.error);
+                this.afficherNotification('❌ ' + result.error, 'error');
             }
         } catch (error) {
-            console.error('Erreur chargement transaction:', error);
-            alert('Erreur: ' + error.message);
+            this.afficherNotification('❌ Erreur de connexion au serveur', 'error');
         }
     }
     
     afficherDetailsTransaction() {
-        this.changerSection('transaction');
+        if (!this.transactionActuelle) return;
         
         document.getElementById('detail-transaction-id').textContent = this.transactionActuelle.id;
         document.getElementById('detail-montant').textContent = `${this.transactionActuelle.montant} FCFA`;
@@ -433,7 +313,7 @@ class UtilisateurApp {
         if (this.transactionActuelle.statut !== 'en_attente') {
             btnPayer.textContent = `Transaction ${this.getStatutText(this.transactionActuelle.statut)}`;
         } else {
-            btnPayer.textContent = 'Confirmer le Paiement';
+            btnPayer.innerHTML = '<span>💰 Payer maintenant</span>';
         }
     }
     
@@ -441,76 +321,168 @@ class UtilisateurApp {
         const listeElement = document.getElementById('liste-boissons');
         listeElement.innerHTML = '';
         
-        this.transactionActuelle.boissons.forEach(boisson => {
-            const item = document.createElement('div');
-            item.className = 'boisson-item';
-            item.innerHTML = `
-                <span>${boisson.icone || '🥤'} ${boisson.nom}</span>
-                <span>${boisson.prix} FCFA</span>
-            `;
-            listeElement.appendChild(item);
-        });
+        if (this.transactionActuelle.boissons && this.transactionActuelle.boissons.length > 0) {
+            this.transactionActuelle.boissons.forEach(boisson => {
+                const item = document.createElement('div');
+                item.className = 'transaction-item';
+                item.innerHTML = `
+                    <div class="transaction-info">
+                        <h4>${boisson.nom}</h4>
+                        <p>${boisson.taille} - ${boisson.prix} FCFA</p>
+                    </div>
+                `;
+                listeElement.appendChild(item);
+            });
+        }
     }
     
     getStatutText(statut) {
         const statuts = {
             'en_attente': 'En attente',
-            'paye': 'Payé',
-            'annule': 'Annulé',
-            'expire': 'Expiré'
+            'paye': 'Payée',
+            'annule': 'Annulée',
+            'expire': 'Expirée',
+            'recharge': 'Rechargement'
         };
         return statuts[statut] || statut;
     }
     
-    async effectuerPaiement() {
+    afficherModalPaiement() {
+        if (!this.transactionActuelle) return;
+        
+        const montant = this.transactionActuelle.montant;
+        const nouveauSolde = this.utilisateur.solde - montant;
+        
+        document.getElementById('paiement-montant').textContent = `${montant} FCFA`;
+        document.getElementById('solde-apres-paiement').textContent = `${nouveauSolde} FCFA`;
+        
+        document.getElementById('modal-paiement').classList.add('active');
+    }
+    
+    fermerModalPaiement() {
+        document.getElementById('modal-paiement').classList.remove('active');
+    }
+    
+    async confirmerPaiement() {
         if (!this.transactionActuelle) return;
         
         try {
             const response = await fetch(`${this.API_URL}/api/transaction/${this.transactionActuelle.id}/payer`, {
                 method: 'POST',
                 headers: {
+                    'Content-Type': 'application/json',
                     'Authorization': `Bearer ${this.token}`
-                }
+                },
+                body: JSON.stringify({ methode: 'solde' })
             });
             
             const result = await response.json();
             
             if (result.success) {
-                this.chargerSolde();
-                this.parler('Paiement réussi! Votre commande sera prête dans 4 secondes.');
-                alert(result.message);
+                this.utilisateur.solde = result.nouveauSolde;
+                localStorage.setItem('ctl_utilisateur', JSON.stringify(this.utilisateur));
                 
-                // Recharger l'historique
-                this.chargerHistorique();
+                this.mettreAJourSolde();
+                this.fermerModalPaiement();
+                this.afficherNotification('✅ ' + result.message, 'success');
                 
-                // Revenir au scanner après paiement
+                // Synthèse vocale
+                if ('speechSynthesis' in window) {
+                    const utterance = new SpeechSynthesisUtterance('Paiement réussi! Votre commande sera prête dans 4 secondes');
+                    utterance.lang = 'fr-FR';
+                    speechSynthesis.speak(utterance);
+                }
+                
                 setTimeout(() => {
-                    this.changerSection('scanner');
-                    this.demarrerScanner();
-                }, 2000);
+                    this.retourAuScanner();
+                }, 4000);
             } else {
-                throw new Error(result.error);
+                this.afficherNotification('❌ ' + result.error, 'error');
             }
         } catch (error) {
-            console.error('Erreur paiement:', error);
-            alert('Erreur: ' + error.message);
+            this.afficherNotification('❌ Erreur lors du paiement', 'error');
         }
     }
     
     annulerTransaction() {
         this.transactionActuelle = null;
-        this.changerSection('scanner');
+        this.retourAuScanner();
+    }
+    
+    retourAuScanner() {
+        this.changerPage('scanner');
+        document.getElementById('transaction-id').value = '';
         this.demarrerScanner();
     }
     
-    async chargerHistorique() {
-        if (!this.token) return;
+    afficherModalRechargement() {
+        document.getElementById('modal-rechargement').classList.add('active');
+    }
+    
+    fermerModalRechargement() {
+        document.getElementById('modal-rechargement').classList.remove('active');
+    }
+    
+    async confirmerRechargement() {
+        const montantOption = document.querySelector('.montant-option.active');
+        const montantPersonnalise = document.getElementById('montant-personnalise').value;
+        const methodeOption = document.querySelector('.methode-option.active');
+        
+        let montant = 0;
+        
+        if (montantPersonnalise) {
+            montant = parseFloat(montantPersonnalise);
+        } else if (montantOption) {
+            montant = parseFloat(montantOption.getAttribute('data-montant'));
+        }
+        
+        if (!montant || montant <= 0) {
+            this.afficherNotification('❌ Veuillez sélectionner un montant valide', 'error');
+            return;
+        }
+        
+        if (!methodeOption) {
+            this.afficherNotification('❌ Veuillez sélectionner une méthode de paiement', 'error');
+            return;
+        }
+        
+        const methode = methodeOption.getAttribute('data-methode');
         
         try {
-            const response = await fetch(`${this.API_URL}/api/historique?limit=20`, {
+            const response = await fetch(`${this.API_URL}/api/recharger`, {
+                method: 'POST',
                 headers: {
+                    'Content-Type': 'application/json',
                     'Authorization': `Bearer ${this.token}`
-                }
+                },
+                body: JSON.stringify({ montant, methode })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                this.utilisateur.solde = result.nouveauSolde;
+                localStorage.setItem('ctl_utilisateur', JSON.stringify(this.utilisateur));
+                
+                this.mettreAJourSolde();
+                this.fermerModalRechargement();
+                this.afficherNotification('✅ ' + result.message, 'success');
+                
+                // Réinitialiser les champs
+                document.querySelectorAll('.montant-option').forEach(o => o.classList.remove('active'));
+                document.getElementById('montant-personnalise').value = '';
+            } else {
+                this.afficherNotification('❌ ' + result.error, 'error');
+            }
+        } catch (error) {
+            this.afficherNotification('❌ Erreur lors du rechargement', 'error');
+        }
+    }
+    
+    async chargerHistorique() {
+        try {
+            const response = await fetch(`${this.API_URL}/api/historique`, {
+                headers: { 'Authorization': `Bearer ${this.token}` }
             });
             
             const result = await response.json();
@@ -519,55 +491,114 @@ class UtilisateurApp {
                 this.afficherHistorique(result.data);
             }
         } catch (error) {
-            console.error('Erreur chargement historique:', error);
+            this.afficherNotification('❌ Erreur chargement historique', 'error');
         }
     }
     
     afficherHistorique(transactions) {
         const historiqueElement = document.getElementById('historique-transactions');
+        historiqueElement.innerHTML = '';
         
         if (transactions.length === 0) {
             historiqueElement.innerHTML = '<div class="transaction-item">Aucune transaction</div>';
             return;
         }
         
-        historiqueElement.innerHTML = '';
-        
         transactions.forEach(transaction => {
             const item = document.createElement('div');
             item.className = 'transaction-item';
+            item.setAttribute('data-statut', transaction.statut);
+            
+            const isRecharge = transaction.statut === 'recharge';
+            const montantClass = isRecharge ? 'positif' : 'negatif';
+            const montantPrefix = isRecharge ? '+' : '-';
+            
             item.innerHTML = `
                 <div class="transaction-info">
-                    <div>${transaction.id}</div>
-                    <div class="transaction-montant">${transaction.montant} FCFA</div>
+                    <h4>${isRecharge ? 'Rechargement' : 'Achat boissons'}</h4>
+                    <p>${new Date(transaction.date).toLocaleDateString()} • ${transaction.id}</p>
+                    ${transaction.methodePaiement ? `<p>Méthode: ${transaction.methodePaiement}</p>` : ''}
                 </div>
-                <div class="transaction-statut ${transaction.statut}">
-                    ${this.getStatutText(transaction.statut)}
+                <div class="transaction-montant ${montantClass}">
+                    ${montantPrefix}${transaction.montant} FCFA
                 </div>
             `;
+            
             historiqueElement.appendChild(item);
         });
+        
+        document.getElementById('profil-transactions').textContent = transactions.length;
     }
     
-    parler(message) {
-        if ('speechSynthesis' in window) {
-            const utterance = new SpeechSynthesisUtterance(message);
-            utterance.lang = 'fr-FR';
-            utterance.rate = 1.0;
-            utterance.pitch = 1.0;
-            speechSynthesis.speak(utterance);
-        }
+    filtrerHistorique(filtre) {
+        const items = document.querySelectorAll('.transaction-item');
         
-        // Jouer un son de notification
-        const audio = document.getElementById('audio-notification');
-        if (audio) {
-            audio.currentTime = 0;
-            audio.play().catch(e => console.log('Audio play failed:', e));
+        items.forEach(item => {
+            if (filtre === 'tous' || item.getAttribute('data-statut') === filtre) {
+                item.style.display = 'flex';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+        
+        document.querySelectorAll('.filtre-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelector(`[data-filtre="${filtre}"]`).classList.add('active');
+    }
+    
+    mettreAJourProfil() {
+        if (this.utilisateur) {
+            document.getElementById('profil-solde').textContent = `${this.utilisateur.solde} FCFA`;
         }
+    }
+    
+    async chargerSolde() {
+        try {
+            const response = await fetch(`${this.API_URL}/api/profil`, {
+                headers: { 'Authorization': `Bearer ${this.token}` }
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                this.utilisateur.solde = result.data.solde;
+                localStorage.setItem('ctl_utilisateur', JSON.stringify(this.utilisateur));
+                this.mettreAJourSolde();
+            }
+        } catch (error) {
+            console.error('Erreur chargement solde:', error);
+        }
+    }
+    
+    mettreAJourSolde() {
+        if (this.utilisateur) {
+            const solde = this.utilisateur.solde || 0;
+            document.getElementById('solde-utilisateur').textContent = `${solde} FCFA`;
+            document.getElementById('profil-solde').textContent = `${solde} FCFA`;
+        }
+    }
+    
+    afficherNotification(message, type = 'info') {
+        const notification = document.getElementById('notification');
+        const messageElement = document.getElementById('notification-message');
+        const iconElement = document.getElementById('notification-icon');
+        
+        messageElement.textContent = message;
+        
+        const icons = {
+            success: '✅',
+            error: '❌',
+            warning: '⚠️',
+            info: 'ℹ️'
+        };
+        
+        iconElement.textContent = icons[type] || 'ℹ️';
+        notification.style.display = 'flex';
+        
+        setTimeout(() => {
+            notification.style.display = 'none';
+        }, 3000);
     }
 }
 
-// Initialiser l'application
-document.addEventListener('DOMContentLoaded', function() {
-    window.utilisateurApp = new UtilisateurApp();
-});
+// Initialisation
+const app = new ApplicationUtilisateur();
